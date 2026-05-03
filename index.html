@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lato:wght@300;400&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+  <title>Haj</title>
+</head>
+<body>
+<!-- ====================================================
+  AUTH POPUP
+==================================================== -->
+<div class="auth-overlay" id="auth-overlay" onclick="closeAuth()">
+  <div class="auth-box" onclick="event.stopPropagation()">
+    <button class="auth-close" onclick="closeAuth()">✕</button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login"  onclick="switchTab('login')">Login</button>
+      <button class="auth-tab"        id="tab-signup" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+    <div id="login-form">
+      <h3>Welcome Back 👋</h3>
+      <div class="auth-field"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com"/></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••"/></div>
+      <p class="auth-error" id="login-error"></p>
+      <button class="auth-btn" onclick="login()">Login</button>
+    </div>
+    <div id="signup-form" style="display:none;">
+      <h3>Create Account ✨</h3>
+      <div class="auth-field"><label>Full Name</label><input type="text" id="signup-name" placeholder="Your name"/></div>
+      <div class="auth-field"><label>Email</label><input type="email" id="signup-email" placeholder="you@email.com"/></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="signup-pass" placeholder="••••••••"/></div>
+      <p class="auth-error" id="signup-error"></p>
+      <button class="auth-btn" onclick="signup()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ====================================================
+  CART POPUP
+==================================================== -->
+<div class="cart-overlay" id="cart" onclick="closeCart()">
+  <div class="cart-box" onclick="event.stopPropagation()">
+    <div class="cart-header">
+      <h3>🛒 Shopping Cart</h3>
+      <button class="cart-close" onclick="closeCart()">✕</button>
+    </div>
+    <div class="cart-items" id="cart-items">
+      <p class="cart-empty">Your cart is empty</p>
+    </div>
+    <div class="cart-footer">
+      <div class="cart-total"><span>Total:</span><span id="cart-total">0 EG</span></div>
+      <a href="#" class="checkout-btn" onclick="goToCheckout()">Checkout</a>
+    </div>
+  </div>
+</div>
+
+
+<!-- ====================================================
+  ACCOUNT PAGE
+==================================================== -->
+<div id="account-page" style="display:none;">
+  <nav>
+    <div class="logo"><img src="logo.jpg" alt="Logo"/></div>
+    <a class="back-home-btn" onclick="showPage('main')">← Back to Home</a>
+  </nav>
+  <div class="account-container">
+    <div class="account-header">
+      <h2>My Account</h2>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+    <div class="account-grid">
+      <div class="account-card">
+        <h4>👤 My Info</h4>
+        <p id="account-name-display"></p>
+        <p id="account-email-display"></p>
+        <hr style="margin:16px 0;border-color:#f0e8e2;"/>
+        <h4>📍 Saved Address</h4>
+        <input class="account-input" id="saved-address" placeholder="Your address..."/>
+        <button class="save-btn" onclick="saveAddress()">Save Address</button>
+      </div>
+      <div class="account-card">
+        <h4>📦 My Orders</h4>
+        <div id="orders-list">
+          <p style="color:#9e8e82;font-size:13px;">No orders yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ====================================================
+  CHECKOUT PAGE
+==================================================== -->
+<div id="checkout-page" style="display:none;">
+  <nav>
+    <div class="logo"><img src="logo.jpg" alt="Logo"/></div>
+    <button class="back-btn" onclick="goBack()">← Back to Shop</button>
+  </nav>
+  <div class="checkout-container">
+
+    <div class="checkout-left">
+      <h2>Complete Your Order</h2>
+      <div class="form-group"><label>Full Name</label><input id="customer-name" placeholder="Enter your name"/></div>
+      <div class="form-group"><label>Phone Number</label><input id="customer-phone" placeholder="01xxxxxxxxx"/></div>
+      <div class="form-group"><label>Address</label><input id="customer-address" placeholder="City, Street..."/></div>
+      <div class="form-group"><label>Notes (Optional)</label><textarea id="customer-notes" placeholder="Any details..."></textarea></div>
+
+      <div class="payment-methods">
+        <p class="payment-title">Payment Method</p>
+        <div class="payment-options">
+          <div class="payment-option active" id="opt-whatsapp" onclick="selectPayment('cash')">
+            <span>💬</span><span>Cash</span>
+          </div>
+          <div class="payment-option" id="opt-visa" onclick="selectPayment('visa')">
+            <span>💳</span><span>Credit / Debit Card</span>
+          </div>
+        </div>
+      </div>
+      <div id="visa-form" style="display:none;">
+        <div class="visa-box">
+          <p class="visa-title">💳 Card Details</p>
+          <div class="form-group"><label>Cardholder Name</label><input id="card-name" placeholder="Name on card"/></div>
+          <div class="form-group">
+            <label>Card Number</label>
+            <input id="card-number" placeholder="1234 5678 9012 3456" maxlength="19" oninput="formatCard(this)"/>
+          </div>
+          <div class="visa-row">
+            <div class="form-group"><label>Expiry</label><input id="card-expiry" placeholder="MM / YY" maxlength="7" oninput="formatExpiry(this)"/></div>
+            <div class="form-group"><label>CVV</label><input id="card-cvv" placeholder="•••" maxlength="3" type="password"/></div>
+          </div>
+          <div class="visa-secure">🔒 Your payment is secured and encrypted</div>
+        </div>
+      </div>
+
+      <button class="submit-order-btn" onclick="submitOrder()">✅ Confirm Order</button>
+    </div>
+
+    <div class="checkout-right">
+      <h3>Your Order</h3>
+      <div id="checkout-items"></div>
+      <div class="checkout-total">
+        <span>Total:</span>
+        <span id="checkout-total-price">0 EG</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ====================================================
+  SUCCESS PAGE
+==================================================== -->
+<div id="success-page" style="display:none;">
+  <nav>
+    <div class="logo"><img src="logo.jpg" alt="Logo"/></div>
+  </nav>
+  <div class="success-container">
+    <div class="success-icon">✅</div>
+    <h2>Order Confirmed!</h2>
+    <p id="success-message"></p>
+    <button class="success-btn" onclick="showPage('main')">Continue Shopping</button>
+  </div>
+</div>
+
+
+<!-- ====================================================
+  NEW COLLECTION PAGE
+==================================================== -->
+<div id="new-collection-page" style="display:none;">
+  <nav>
+    <div class="logo"><img src="logo.jpg" alt="Logo"/></div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div class="search-box">
+        <input type="text" id="search-input-nc" placeholder="Search hijabs..."
+               oninput="handleSearch(this.value)"/>
+        <span>🔍</span>
+      </div>
+      <div class="cart-icon" onclick="openCart()">🛒<span class="cart-count" id="cart-count-nc">0</span></div>
+      <a class="back-home-btn" onclick="showPage('main')">← Back to Home</a>
+    </div>
+  </nav>
+
+  <section class="nc-hero">
+    <h1>New Collection</h1>
+    <p>Discover our latest styles</p>
+  </section>
+
+  <!-- JS هيبني المنتجات هنا -->
+  <section class="nc-products" id="nc-products-container"></section>
+
+  <footer class="page-footer">
+    <p>© 2025 Haj. All rights reserved. |
+      <a href="https://wa.me/201201325656" target="_blank">WhatsApp Us</a>
+    </p>
+  </footer>
+</div>
+
+
+<!-- ====================================================
+  MAIN PAGE
+==================================================== -->
+<div id="main-page">
+
+  <nav>
+    <div class="logo"><img src="logo.jpg" alt="Logo"/></div>
+    <div class="nav-links">
+      <a href="#home">Home</a>
+      <a href="#products">Shop</a>
+      <a onclick="showPage('new-collection')">Collections</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <div class="nav-right">
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="Search hijabs..."
+               oninput="handleSearch(this.value)"/>
+        <span>🔍</span>
+      </div>
+      <div class="account-btn" onclick="handleAccountClick()">
+        👤 <span id="nav-account-label">Login</span>
+      </div>
+      <div class="cart-icon" onclick="openCart()">🛒
+        <span class="cart-count" id="cart-count">0</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero" id="home">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <div class="hero-text">
+        <h1>Discover Your Perfect Modesty</h1>
+        <p>Elegance in every drape. Find your style.</p>
+        <a href="#products" class="hero-btn">Shop Now</a>
+      </div>
+      <div class="hero-img-right"><img src="pho.jpg" alt="Model"/></div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="about" id="about">
+    <div class="about-text">
+      <h2>Made with love in our team</h2>
+      <p>We take pride in wearing the hijab. Our mission is to provide the best hijab experience.</p>
+      <ul class="about-list">
+        <li>✓ Credibility</li><li>✓ Quality</li>
+        <li>✓ Price</li><li>✓ Sustainability</li>
+        <li>✓ Level of service and support</li>
+        <li>✓ Change the world through charity</li>
+      </ul>
+      <a href="#" class="read-more-btn">READ MORE</a>
+    </div>
+    <div class="about-img"><img src="3d8df27e29ffffd4aa1d397bdeea2f8c.jpg" alt="About"/></div>
+  </section>
+
+  <!-- BEST SELLERS -->
+  <section class="products" id="products">
+    <h2>Best Sellers</h2>
+    <p class="products-sub">Breathable, eco-friendly hijabs that keep you cool and comfortable.</p>
+    <!-- JS هيبني الـ 3 منتجات هنا -->
+    <div class="products-grid" id="best-sellers-container"></div>
+    <div style="text-align:center;padding:50px 0 10px;">
+      <a class="collections-link-btn" onclick="showPage('new-collection')">Shop by Collection</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer" id="contact">
+    <div class="footer-top">
+      <div class="footer-logo"><img src="logo.jpg" alt="Logo"/></div>
+      <h2>DISCOVER THE BEAUTY<br>OF MODERN MODESTY.</h2>
+      <div class="footer-tagline">
+        <p>Embrace your essence with conscious elegance.</p>
+        <a href="#">Join Us</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-logo-big"><img src="logo.jpg" alt="Logo"/></div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4>SHOP</h4>
+          <a href="#products">Best Sellers</a>
+          <a onclick="showPage('new-collection')">New Collection</a>
+        </div>
+        <div class="footer-col">
+          <h4>ABOUT</h4>
+          <a href="#about">Our Story</a>
+          <a href="#about">Sustainability</a>
+        </div>
+        <div class="footer-col">
+          <h4>CONTACT</hv4>
+          <a href="https://wa.me/201201326563"
+            target="_blank">WhatsApp Us</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+
+  <script src="script.js"></script>
+</body>
+</html>
