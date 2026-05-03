@@ -1,7 +1,5 @@
-/* ═══════════════════════════════════════════
-   API Configuration
-═══════════════════════════════════════════ */
 const API_URL = 'https://hala-production-3e44.up.railway.app';
+
 function getToken() {
   return localStorage.getItem('token');
 }
@@ -24,7 +22,6 @@ async function apiRequest(endpoint, options = {}) {
       headers
     });
  
-    // Handle HTTP errors (401, 404, 500, etc.)
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`HTTP ${res.status}: ${text.substring(0, 200)}`);
@@ -49,7 +46,7 @@ async function apiRequest(endpoint, options = {}) {
  
 /* ═══════════════════════════════════════════
    بيانات المنتجات (Fallback)
-═══════════════════════════════════════════ */
+   ═══════════════════════════════════════════ */
 const allProducts = [
   { id:1, name:'Chiffon hijab with attached inner cap', price:'120', imgs:['jel8.jpg','jel3.jpg','jel4.jpg','jel5.jpg','jel6.jpg','jel7.jpg'] },
   { id:2, name:'FLOWERS HIJAB',  price:'180', imgs:['m2.jpg','m3.jpg','m4.jpg','m5.jpg','m6.jpg','m7.jpg'] },
@@ -61,7 +58,7 @@ const allProducts = [
  
 /* ═══════════════════════════════════════════
    بناء الصفحات
-═══════════════════════════════════════════ */
+   ═══════════════════════════════════════════ */
 async function buildNewCollection() {
   try {
     const data = await apiRequest('/products');
@@ -101,39 +98,42 @@ async function buildBestSellers() {
 }
  
 function renderBestSellers(products) {
-  document.getElementById('best-sellers-container').innerHTML =
-    products.map(p => `
-      <div class="product-card" onclick="addToCartSimple('${p.name}','${p.price}','${p.imgs[0]}',event)">
-        <img src="${p.imgs[0]}" alt="${p.name}"/>
-        <p class="product-name">${p.name}</p>
-        <p class="product-price">${p.price} EG</p>
-      </div>
-    `).join('');
+  const container = document.getElementById('best-sellers-container');
+  if (!container) return;
+  container.innerHTML = products.map(p => `
+    <div class="product-card" onclick="addToCartSimple('${p.name}','${p.price}','${p.imgs[0]}',event)">
+      <img src="${p.imgs[0]}" alt="${p.name}"/>
+      <p class="product-name">${p.name}</p>
+      <p class="product-price">${p.price} EG</p>
+    </div>
+  `).join('');
 }
  
 function renderProducts(products) {
-  document.getElementById('nc-products-container').innerHTML =
-    products.map(p => `
-      <div class="nc-card">
-        <div class="nc-main-wrap">
-          <img class="nc-main-img" id="img-product${p.id}" src="${p.imgs[0]}" alt="${p.name}"/>
-        </div>
-        <div class="nc-thumbs">
-          ${p.imgs.map(img => `
-            <img class="nc-thumb" src="${img}" onclick="changeMainImg('product${p.id}',this)" alt=""/>
-          `).join('')}
-        </div>
-        <div class="nc-info">
-          <h3 class="nc-name">${p.name}</h3>
-          <p class="nc-price">${p.price} EG</p>
-          <a class="nc-add-btn" onclick="addToCartDirect('img-product${p.id}','${p.name}','${p.price}',this)">
-            Add to Cart
-          </a>
-        </div>
+  const container = document.getElementById('nc-products-container');
+  if (!container) return;
+  container.innerHTML = products.map(p => `
+    <div class="nc-card">
+      <div class="nc-main-wrap">
+        <img class="nc-main-img" id="img-product${p.id}" src="${p.imgs[0]}" alt="${p.name}"/>
       </div>
-    `).join('');
+      <div class="nc-thumbs">
+        ${p.imgs.map(img => `
+          <img class="nc-thumb" src="${img}" onclick="changeMainImg('product${p.id}',this)" alt=""/>
+        `).join('')}
+      </div>
+      <div class="nc-info">
+        <h3 class="nc-name">${p.name}</h3>
+        <p class="nc-price">${p.price} EG</p>
+        <a class="nc-add-btn" onclick="addToCartDirect('img-product${p.id}','${p.name}','${p.price}',this)">
+          Add to Cart
+        </a>
+      </div>
+    </div>
+  `).join('');
   document.querySelectorAll('.nc-card').forEach(card => {
-    card.querySelector('.nc-thumb').classList.add('active');
+    const firstThumb = card.querySelector('.nc-thumb');
+    if (firstThumb) firstThumb.classList.add('active');
   });
 }
  
@@ -142,14 +142,14 @@ buildBestSellers();
  
 /* ═══════════════════════════════════════════
    Search
-═══════════════════════════════════════════ */
+   ═══════════════════════════════════════════ */
 function handleSearch(query) {
   const q = query.toLowerCase().trim();
  
   const main = document.getElementById('search-input');
-  const nc   = document.getElementById('search-input-nc');
+  const nc = document.getElementById('search-input-nc');
   if (main && main.value !== query) main.value = query;
-  if (nc   && nc.value   !== query) nc.value   = query;
+  if (nc && nc.value !== query) nc.value = query;
  
   if (q === '') {
     buildNewCollection();
@@ -166,32 +166,37 @@ function handleSearch(query) {
   if (results.length > 0) {
     renderProducts(results);
   } else {
-    document.getElementById('nc-products-container').innerHTML = `
-      <div style="text-align:center;padding:80px 20px;color:#9e8e82;">
-        <p style="font-size:48px;margin-bottom:16px;">🔍</p>
-        <p style="font-size:18px;font-family:'Playfair Display',serif;color:#3a2e27;margin-bottom:8px;">
-          No results for "${query}"
-        </p>
-        <p style="font-size:13px;">Try: Chiffon · Flowers · Stan · Pashamil · Milt · Tiger</p>
-        <a onclick="clearSearch()"
-           style="display:inline-block;margin-top:20px;background:#3a2e27;color:#fff;
-                  padding:10px 28px;border-radius:20px;cursor:pointer;font-size:13px;">
-          Show All Products
-        </a>
-      </div>
-    `;
+    const container = document.getElementById('nc-products-container');
+    if (container) {
+      container.innerHTML = `
+        <div style="text-align:center;padding:80px 20px;color:#9e8e82;">
+          <p style="font-size:48px;margin-bottom:16px;">🔍</p>
+          <p style="font-size:18px;font-family:'Playfair Display',serif;color:#3a2e27;margin-bottom:8px;">
+            No results for "${query}"
+          </p>
+          <p style="font-size:13px;">Try: Chiffon · Flowers · Stan · Pashamil · Milt · Tiger</p>
+          <a onclick="clearSearch()"
+             style="display:inline-block;margin-top:20px;background:#3a2e27;color:#fff;
+                    padding:10px 28px;border-radius:20px;cursor:pointer;font-size:13px;">
+            Show All Products
+          </a>
+        </div>
+      `;
+    }
   }
 }
  
 function clearSearch() {
-  document.getElementById('search-input').value    = '';
-  document.getElementById('search-input-nc').value = '';
+  const main = document.getElementById('search-input');
+  const nc = document.getElementById('search-input-nc');
+  if (main) main.value = '';
+  if (nc) nc.value = '';
   buildNewCollection();
 }
  
 /* ═══════════════════════════════════════════
    Navigation
-═══════════════════════════════════════════ */
+   ═══════════════════════════════════════════ */
 function showPage(page) {
   ['main-page','checkout-page','new-collection-page','account-page','success-page']
     .forEach(id => {
@@ -211,15 +216,15 @@ function showPage(page) {
 }
  
 /* ═══════════════════════════════════════════
-   AUTH (معدّل يكلّم الباك إند)
-═══════════════════════════════════════════ */
+   AUTH
+   ═══════════════════════════════════════════ */
 let currentUser = null;
  
-function openAuth()   { 
+function openAuth() { 
   const el = document.getElementById('auth-overlay');
   if (el) el.style.display = 'flex'; 
 }
-function closeAuth()  { 
+function closeAuth() { 
   const el = document.getElementById('auth-overlay');
   if (el) el.style.display = 'none'; 
 }
@@ -230,17 +235,17 @@ function switchTab(tab) {
   const tabLogin = document.getElementById('tab-login');
   const tabSignup = document.getElementById('tab-signup');
  
-  if (loginForm) loginForm.style.display  = tab === 'login'  ? 'block' : 'none';
+  if (loginForm) loginForm.style.display = tab === 'login' ? 'block' : 'none';
   if (signupForm) signupForm.style.display = tab === 'signup' ? 'block' : 'none';
-  if (tabLogin) tabLogin.classList.toggle('active',  tab === 'login');
+  if (tabLogin) tabLogin.classList.toggle('active', tab === 'login');
   if (tabSignup) tabSignup.classList.toggle('active', tab === 'signup');
 }
  
 async function signup() {
-  const name  = document.getElementById('signup-name').value.trim();
+  const name = document.getElementById('signup-name').value.trim();
   const email = document.getElementById('signup-email').value.trim();
-  const pass  = document.getElementById('signup-pass').value;
-  const err   = document.getElementById('signup-error');
+  const pass = document.getElementById('signup-pass').value;
+  const err = document.getElementById('signup-error');
  
   if (!name || !email || !pass) { 
     if (err) err.innerText = 'Please fill all fields.'; 
@@ -268,8 +273,8 @@ async function signup() {
  
 async function login() {
   const email = document.getElementById('login-email').value.trim();
-  const pass  = document.getElementById('login-pass').value;
-  const err   = document.getElementById('login-error');
+  const pass = document.getElementById('login-pass').value;
+  const err = document.getElementById('login-error');
  
   if (!email || !pass) { 
     if (err) err.innerText = 'Please fill all fields.'; 
@@ -337,7 +342,7 @@ async function loadAccountPage() {
     const savedAddr = document.getElementById('saved-address');
     const ordersList = document.getElementById('orders-list');
  
-    if (nameDisplay) nameDisplay.innerText  = '👤 ' + (user.name || 'Unknown');
+    if (nameDisplay) nameDisplay.innerText = '👤 ' + (user.name || 'Unknown');
     if (emailDisplay) emailDisplay.innerText = '📧 ' + (user.email || 'No email');
     if (savedAddr) savedAddr.value = user.address || '';
  
@@ -392,7 +397,6 @@ async function checkAuth() {
   }
 }
  
-// Fix: handle promise rejection on startup
 checkAuth().catch(err => {
   console.log('Initial auth check failed:', err.message);
   localStorage.removeItem('token');
@@ -400,7 +404,7 @@ checkAuth().catch(err => {
  
 /* ═══════════════════════════════════════════
    Cart
-═══════════════════════════════════════════ */
+   ═══════════════════════════════════════════ */
 let cart = [];
  
 function updateCart() {
@@ -455,18 +459,18 @@ function addToCartDirect(imgId, name, price, btn) {
   updateCart();
   if (btn) {
     btn.innerText = '✓ Added!';
-    btn.style.background    = '#c9a87c';
+    btn.style.background = '#c9a87c';
     btn.style.pointerEvents = 'none';
     setTimeout(() => {
-      btn.innerText           = 'Add to Cart';
-      btn.style.background    = '#3a2e27';
+      btn.innerText = 'Add to Cart';
+      btn.style.background = '#3a2e27';
       btn.style.pointerEvents = 'auto';
     }, 1200);
   }
 }
  
 function removeFromCart(i) { cart.splice(i,1); updateCart(); }
-function openCart()  { 
+function openCart() { 
   const el = document.getElementById('cart');
   if (el) el.style.display = 'flex'; 
 }
@@ -477,7 +481,7 @@ function closeCart() {
  
 /* ═══════════════════════════════════════════
    Checkout
-═══════════════════════════════════════════ */
+   ═══════════════════════════════════════════ */
 let selectedPayment = 'cash';
  
 function selectPayment(method) {
@@ -533,15 +537,15 @@ function goBack() {
 }
  
 async function submitOrder() {
-  const nameEl    = document.getElementById('customer-name');
-  const phoneEl   = document.getElementById('customer-phone');
+  const nameEl = document.getElementById('customer-name');
+  const phoneEl = document.getElementById('customer-phone');
   const addressEl = document.getElementById('customer-address');
-  const notesEl   = document.getElementById('customer-notes');
+  const notesEl = document.getElementById('customer-notes');
  
-  const name    = nameEl ? nameEl.value.trim() : '';
-  const phone   = phoneEl ? phoneEl.value.trim() : '';
+  const name = nameEl ? nameEl.value.trim() : '';
+  const phone = phoneEl ? phoneEl.value.trim() : '';
   const address = addressEl ? addressEl.value.trim() : '';
-  const notes   = notesEl ? notesEl.value.trim() : '';
+  const notes = notesEl ? notesEl.value.trim() : '';
  
   if (!name || !phone || !address) {
     alert('Please fill all required fields');
@@ -593,7 +597,7 @@ async function submitOrder() {
  
 /* ═══════════════════════════════════════════
    Thumbnails
-═══════════════════════════════════════════ */
+   ═══════════════════════════════════════════ */
 function changeMainImg(productId, thumbEl) {
   const imgEl = document.getElementById('img-' + productId);
   if (!imgEl || !thumbEl) return;
@@ -612,7 +616,7 @@ function changeMainImg(productId, thumbEl) {
  
 /* ═══════════════════════════════════════════
    Visa Format Helpers
-═══════════════════════════════════════════ */
+   ═══════════════════════════════════════════ */
 function formatCard(input) {
   if (!input) return;
   let v = input.value.replace(/\D/g,'').substring(0,16);
