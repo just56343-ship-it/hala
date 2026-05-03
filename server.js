@@ -3,15 +3,49 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = 'haj-secret-key-2025';
+const JWT_SECRET = process.env.JWT_SECRET || 'haj-secret-key-2025';
 
-app.use(cors({
-  origin: '*',
-  credentials: true
-}));
+/* ═══════════════════════════════════════════
+   CORS Configuration - FIXED
+   credentials:true + origin:'*' is INVALID
+   Must use dynamic origin or specific origins
+═══════════════════════════════════════════ */
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5500',
+  'http://localhost:8080',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5500',
+  'https://haj-store-production.up.railway.app',
+  // Add your deployed frontend URL here
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    // For development, log and allow unknown origins
+    console.log('CORS request from origin:', origin);
+    callback(null, true); // Change to false in production for security
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
+
 app.use(express.json());
 app.use(express.static('public'));
 
@@ -19,14 +53,25 @@ const DB_FILE = './database.json';
 
 function readDB() {
   try {
-    return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    if (!fs.existsSync(DB_FILE)) {
+      const initial = { users: {}, orders: {}, nextId: 1 };
+      writeDB(initial);
+      return initial;
+    }
+    const data = fs.readFileSync(DB_FILE, 'utf8');
+    return JSON.parse(data);
   } catch (e) {
+    console.error('DB read error:', e);
     return { users: {}, orders: {}, nextId: 1 };
   }
 }
 
 function writeDB(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+  } catch (e) {
+    console.error('DB write error:', e);
+  }
 }
 
 const generateToken = (id) => jwt.sign({ id }, JWT_SECRET, { expiresIn: '7d' });
@@ -37,21 +82,29 @@ const authMiddleware = (req, res, next) => {
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
     }
-    if (!token) return res.status(401).json({ success: false, message: 'Not authorized' });
-    
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+
     const decoded = jwt.verify(token, JWT_SECRET);
     const db = readDB();
     const user = db.users[decoded.id];
-    if (!user) return res.status(401).json({ success: false, message: 'User not found' });
-    
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'User not found' });
+    }
+
     req.user = user;
     req.userId = decoded.id;
     next();
   } catch (error) {
-    res.status(401).json({ success: false, message: 'Invalid token' });
+    console.error('Auth middleware error:', error.message);
+    return res.status(401).json({ success: false, message: 'Invalid token' });
   }
 };
 
+/* ═══════════════════════════════════════════
+   AUTH ROUTES
+═══════════════════════════════════════════ */
 app.post('/api/auth/register', (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -61,13 +114,13 @@ app.post('/api/auth/register', (req, res) => {
     if (password.length < 6) {
       return res.status(400).json({ success: false, message: 'Password must be 6+ chars' });
     }
-    
+
     const db = readDB();
     const existing = Object.values(db.users).find(u => u.email === email);
     if (existing) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
-    
+
     const userId = 'user_' + db.nextId++;
     const hashedPass = bcrypt.hashSync(password, 10);
     db.users[userId] = {
@@ -75,9 +128,9 @@ app.post('/api/auth/register', (req, res) => {
       address: '', phone: '', orders: [], cart: [],
       role: 'user', createdAt: new Date().toISOString()
     };
-    
+
     writeDB(db);
-    
+
     res.status(201).json({
       success: true,
       token: generateToken(userId),
@@ -95,24 +148,25 @@ app.post('/api/auth/login', (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Please fill all fields' });
     }
-    
+
     const db = readDB();
     const user = Object.values(db.users).find(u => u.email === email);
     if (!user) {
       return res.status(401).json({ success: false, message: 'Wrong email or password' });
     }
-    
+
     const isMatch = bcrypt.compareSync(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Wrong email or password' });
     }
-    
+
     res.json({
       success: true,
       token: generateToken(user.id),
       user: { id: user.id, name: user.name, email: user.email, address: user.address, phone: user.phone }
     });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -127,6 +181,7 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
       user: { id: user.id, name: user.name, email: user.email, address: user.address, phone: user.phone, orders }
     });
   } catch (error) {
+    console.error('/auth/me error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -136,16 +191,23 @@ app.put('/api/auth/profile', authMiddleware, (req, res) => {
     const { name, address, phone } = req.body;
     const db = readDB();
     const user = db.users[req.userId];
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
     user.name = name || user.name;
     user.address = address !== undefined ? address : user.address;
     user.phone = phone !== undefined ? phone : user.phone;
     writeDB(db);
     res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, address: user.address, phone: user.phone } });
   } catch (error) {
+    console.error('Profile update error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
+/* ═══════════════════════════════════════════
+   PRODUCTS
+═══════════════════════════════════════════ */
 const allProducts = [
   { id: '1', name: 'Chiffon hijab with attached inner cap', price: 120, images: ['jel8.jpg','jel3.jpg','jel4.jpg','jel5.jpg','jel6.jpg','jel7.jpg'], category: 'chiffon', isBestSeller: true },
   { id: '2', name: 'FLOWERS HIJAB', price: 180, images: ['m2.jpg','m3.jpg','m4.jpg','m5.jpg','m6.jpg','m7.jpg'], category: 'flowers', isBestSeller: true },
@@ -174,6 +236,9 @@ app.get('/api/products/:id', (req, res) => {
   res.json({ success: true, product });
 });
 
+/* ═══════════════════════════════════════════
+   CART
+═══════════════════════════════════════════ */
 app.get('/api/cart', authMiddleware, (req, res) => {
   res.json({ success: true, cart: req.user.cart || [] });
 });
@@ -205,28 +270,31 @@ app.delete('/api/cart', authMiddleware, (req, res) => {
   res.json({ success: true, cart: [] });
 });
 
+/* ═══════════════════════════════════════════
+   ORDERS
+═══════════════════════════════════════════ */
 app.post('/api/orders', authMiddleware, (req, res) => {
   const { items, shippingInfo, paymentMethod } = req.body;
   if (!items || !items.length) return res.status(400).json({ success: false, message: 'Cart is empty' });
-  
+
   const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const db = readDB();
   const orderId = 'order_' + db.nextId++;
   const orderNumber = 'HAJ-' + Date.now().toString().slice(-6) + '-' + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  
+
   const order = {
     id: orderId, user: req.userId, items, totalAmount,
     shippingInfo, paymentMethod, paymentStatus: 'pending',
     orderStatus: 'pending', orderNumber, createdAt: new Date().toISOString()
   };
-  
+
   db.orders[orderId] = order;
   const user = db.users[req.userId];
   if (!user.orders) user.orders = [];
   user.orders.push(orderId);
   user.cart = [];
   writeDB(db);
-  
+
   res.status(201).json({ success: true, order });
 });
 
@@ -245,12 +313,23 @@ app.get('/api/orders/:id', authMiddleware, (req, res) => {
   res.json({ success: true, order });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📱 Open: http://localhost:${PORT}`);
+/* ═══════════════════════════════════════════
+   HEALTH CHECK
+═══════════════════════════════════════════ */
+app.get('/api/health', (req, res) => {
+  res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
 });
 
+/* ═══════════════════════════════════════════
+   ERROR HANDLER - MUST BE BEFORE app.listen()
+═══════════════════════════════════════════ */
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
+  console.error('Server Error:', err);
   res.status(500).json({ success: false, message: err.message || 'Server error' });
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.l og(`📱 Open: http://localhost:${PORT}`);
+  console.log(`🔑 JWT_SECRET loaded: ${JWT_SECRET === 'haj-secret-key-2025' ? 'USING DEFAULT (change in production!)' : 'FROM ENV'}`);
 });

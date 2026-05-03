@@ -1,41 +1,41 @@
 /* ═══════════════════════════════════════════
    API Configuration
 ═══════════════════════════════════════════ */
-const API_URL = 'https://haj-store-production.up.railway.app';
+const API_URL = 'https://hala-production-3e44.up.railway.app';
 function getToken() {
   return localStorage.getItem('token');
 }
-
+ 
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_URL}/api${endpoint}`;
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers
   };
-
+ 
   const token = getToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-
+ 
   try {
     const res = await fetch(url, {
       ...options,
       headers
     });
-
+ 
     // Handle HTTP errors (401, 404, 500, etc.)
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`HTTP ${res.status}: ${text.substring(0, 200)}`);
     }
-
+ 
     const contentType = res.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       const text = await res.text();
       throw new Error(`Server returned non-JSON: ${text.substring(0, 200)}`);
     }
-
+ 
     const data = await res.json();
     if (!data.success) {
       throw new Error(data.message || 'Request failed');
@@ -46,7 +46,7 @@ async function apiRequest(endpoint, options = {}) {
     throw e;
   }
 }
-
+ 
 /* ═══════════════════════════════════════════
    بيانات المنتجات (Fallback)
 ═══════════════════════════════════════════ */
@@ -58,7 +58,7 @@ const allProducts = [
   { id:5, name:'MILT HIJAB',     price:'150', imgs:['c1.jpg','c2.jpg','c4.jpg','c3.jpg','c5.jpg','c6.jpg'] },
   { id:6, name:'TIGER HIJAB',    price:'200', imgs:['d1.jpg','d2.jpg','d3.jpg','d5.jpg','d7.jpg'] },
 ];
-
+ 
 /* ═══════════════════════════════════════════
    بناء الصفحات
 ═══════════════════════════════════════════ */
@@ -80,7 +80,7 @@ async function buildNewCollection() {
   }
   renderProducts(allProducts);
 }
-
+ 
 async function buildBestSellers() {
   try {
     const data = await apiRequest('/products/bestsellers/list');
@@ -99,7 +99,7 @@ async function buildBestSellers() {
   }
   renderBestSellers(allProducts.slice(0,3));
 }
-
+ 
 function renderBestSellers(products) {
   document.getElementById('best-sellers-container').innerHTML =
     products.map(p => `
@@ -110,7 +110,7 @@ function renderBestSellers(products) {
       </div>
     `).join('');
 }
-
+ 
 function renderProducts(products) {
   document.getElementById('nc-products-container').innerHTML =
     products.map(p => `
@@ -136,33 +136,33 @@ function renderProducts(products) {
     card.querySelector('.nc-thumb').classList.add('active');
   });
 }
-
+ 
 buildNewCollection();
 buildBestSellers();
-
+ 
 /* ═══════════════════════════════════════════
    Search
 ═══════════════════════════════════════════ */
 function handleSearch(query) {
   const q = query.toLowerCase().trim();
-
+ 
   const main = document.getElementById('search-input');
   const nc   = document.getElementById('search-input-nc');
   if (main && main.value !== query) main.value = query;
   if (nc   && nc.value   !== query) nc.value   = query;
-
+ 
   if (q === '') {
     buildNewCollection();
     buildBestSellers();
     return;
   }
-
+ 
   const results = allProducts.filter(p =>
     p.name.toLowerCase().includes(q)
   );
-
+ 
   showPage('new-collection');
-
+ 
   if (results.length > 0) {
     renderProducts(results);
   } else {
@@ -182,13 +182,13 @@ function handleSearch(query) {
     `;
   }
 }
-
+ 
 function clearSearch() {
   document.getElementById('search-input').value    = '';
   document.getElementById('search-input-nc').value = '';
   buildNewCollection();
 }
-
+ 
 /* ═══════════════════════════════════════════
    Navigation
 ═══════════════════════════════════════════ */
@@ -209,12 +209,12 @@ function showPage(page) {
   if (target) target.style.display = 'block';
   window.scrollTo(0,0);
 }
-
+ 
 /* ═══════════════════════════════════════════
    AUTH (معدّل يكلّم الباك إند)
 ═══════════════════════════════════════════ */
 let currentUser = null;
-
+ 
 function openAuth()   { 
   const el = document.getElementById('auth-overlay');
   if (el) el.style.display = 'flex'; 
@@ -223,25 +223,25 @@ function closeAuth()  {
   const el = document.getElementById('auth-overlay');
   if (el) el.style.display = 'none'; 
 }
-
+ 
 function switchTab(tab) {
   const loginForm = document.getElementById('login-form');
   const signupForm = document.getElementById('signup-form');
   const tabLogin = document.getElementById('tab-login');
   const tabSignup = document.getElementById('tab-signup');
-
+ 
   if (loginForm) loginForm.style.display  = tab === 'login'  ? 'block' : 'none';
   if (signupForm) signupForm.style.display = tab === 'signup' ? 'block' : 'none';
   if (tabLogin) tabLogin.classList.toggle('active',  tab === 'login');
   if (tabSignup) tabSignup.classList.toggle('active', tab === 'signup');
 }
-
+ 
 async function signup() {
   const name  = document.getElementById('signup-name').value.trim();
   const email = document.getElementById('signup-email').value.trim();
   const pass  = document.getElementById('signup-pass').value;
   const err   = document.getElementById('signup-error');
-
+ 
   if (!name || !email || !pass) { 
     if (err) err.innerText = 'Please fill all fields.'; 
     return; 
@@ -250,13 +250,13 @@ async function signup() {
     if (err) err.innerText = 'Password must be 6+ characters.'; 
     return; 
   }
-
+ 
   try {
     const data = await apiRequest('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password: pass })
     });
-
+ 
     localStorage.setItem('token', data.token);
     loginUser(data.user);
     closeAuth();
@@ -265,23 +265,23 @@ async function signup() {
     if (err) err.innerText = e.message || 'Registration failed';
   }
 }
-
+ 
 async function login() {
   const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-pass').value;
   const err   = document.getElementById('login-error');
-
+ 
   if (!email || !pass) { 
     if (err) err.innerText = 'Please fill all fields.'; 
     return; 
   }
-
+ 
   try {
     const data = await apiRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password: pass })
     });
-
+ 
     localStorage.setItem('token', data.token);
     loginUser(data.user);
     closeAuth();
@@ -290,7 +290,7 @@ async function login() {
     if (err) err.innerText = e.message || 'Wrong email or password.';
   }
 }
-
+ 
 function loginUser(user) {
   if (!user) {
     console.error('loginUser called with no user data');
@@ -299,14 +299,14 @@ function loginUser(user) {
   currentUser = user;
   const navLabel = document.getElementById('nav-account-label');
   if (navLabel) navLabel.innerText = user.name ? user.name.split(' ')[0] : 'User';
-
+ 
   const addrField = document.getElementById('customer-address');
   if (addrField && user.address) addrField.value = user.address;
-
+ 
   const savedAddr = document.getElementById('saved-address');
   if (savedAddr && user.address) savedAddr.value = user.address;
 }
-
+ 
 function logout() {
   currentUser = null;
   localStorage.removeItem('token');
@@ -314,15 +314,15 @@ function logout() {
   if (navLabel) navLabel.innerText = 'Login';
   showPage('main');
 }
-
+ 
 function handleAccountClick() {
   if (currentUser) { loadAccountPage(); showPage('account'); }
   else { openAuth(); }
 }
-
+ 
 async function loadAccountPage() {
   if (!currentUser) return;
-
+ 
   try {
     const data = await apiRequest('/auth/me');
     const user = data.user;
@@ -331,16 +331,16 @@ async function loadAccountPage() {
       return;
     }
     currentUser = user;
-
+ 
     const nameDisplay = document.getElementById('account-name-display');
     const emailDisplay = document.getElementById('account-email-display');
     const savedAddr = document.getElementById('saved-address');
     const ordersList = document.getElementById('orders-list');
-
+ 
     if (nameDisplay) nameDisplay.innerText  = '👤 ' + (user.name || 'Unknown');
     if (emailDisplay) emailDisplay.innerText = '📧 ' + (user.email || 'No email');
     if (savedAddr) savedAddr.value = user.address || '';
-
+ 
     const orders = user.orders || [];
     if (ordersList) {
       ordersList.innerHTML = orders.length === 0
@@ -356,13 +356,13 @@ async function loadAccountPage() {
     console.error('Failed to load account:', e);
   }
 }
-
+ 
 async function saveAddress() {
   if (!currentUser) return;
   const addrEl = document.getElementById('saved-address');
   if (!addrEl) return;
   const addr = addrEl.value.trim();
-
+ 
   try {
     await apiRequest('/auth/profile', {
       method: 'PUT',
@@ -376,11 +376,11 @@ async function saveAddress() {
     alert('Failed to save address');
   }
 }
-
+ 
 async function checkAuth() {
   const token = getToken();
   if (!token) return;
-
+ 
   try {
     const data = await apiRequest('/auth/me');
     if (data.user) {
@@ -391,29 +391,29 @@ async function checkAuth() {
     localStorage.removeItem('token');
   }
 }
-
+ 
 // Fix: handle promise rejection on startup
 checkAuth().catch(err => {
   console.log('Initial auth check failed:', err.message);
   localStorage.removeItem('token');
 });
-
+ 
 /* ═══════════════════════════════════════════
    Cart
 ═══════════════════════════════════════════ */
 let cart = [];
-
+ 
 function updateCart() {
   const cartCount = document.getElementById('cart-count');
   const cartCountNc = document.getElementById('cart-count-nc');
   const cartItems = document.getElementById('cart-items');
   const cartTotal = document.getElementById('cart-total');
-
+ 
   if (cartCount) cartCount.innerText = cart.length;
   if (cartCountNc) cartCountNc.innerText = cart.length;
-
+ 
   if (!cartItems || !cartTotal) return;
-
+ 
   if (cart.length === 0) {
     cartItems.innerHTML = '<p class="cart-empty">Your cart is empty</p>';
     cartTotal.innerText = '0 EG';
@@ -434,7 +434,7 @@ function updateCart() {
   }).join('');
   cartTotal.innerText = total + ' EG';
 }
-
+ 
 function addToCartSimple(name, price, img, e) {
   cart.push({ name, price, img, quantity: 1 });
   updateCart();
@@ -443,7 +443,7 @@ function addToCartSimple(name, price, img, e) {
     setTimeout(() => e.currentTarget.style.opacity = '1', 400);
   }
 }
-
+ 
 function addToCartDirect(imgId, name, price, btn) {
   const imgEl = document.getElementById(imgId);
   if (!imgEl) return;
@@ -464,7 +464,7 @@ function addToCartDirect(imgId, name, price, btn) {
     }, 1200);
   }
 }
-
+ 
 function removeFromCart(i) { cart.splice(i,1); updateCart(); }
 function openCart()  { 
   const el = document.getElementById('cart');
@@ -474,36 +474,36 @@ function closeCart() {
   const el = document.getElementById('cart');
   if (el) el.style.display = 'none'; 
 }
-
+ 
 /* ═══════════════════════════════════════════
    Checkout
 ═══════════════════════════════════════════ */
 let selectedPayment = 'cash';
-
+ 
 function selectPayment(method) {
   selectedPayment = method;
   const optWhatsapp = document.getElementById('opt-whatsapp');
   const optVisa = document.getElementById('opt-visa');
   const visaForm = document.getElementById('visa-form');
-
+ 
   if (optWhatsapp) optWhatsapp.classList.toggle('active', method === 'cash');
   if (optVisa) optVisa.classList.toggle('active', method === 'visa');
   if (visaForm) visaForm.style.display = method === 'visa' ? 'block' : 'none';
 }
-
+ 
 function goToCheckout() {
   if (cart.length === 0) {
     alert('Your cart is empty!');
     return;
   }
-
+ 
   const checkoutItems = document.getElementById('checkout-items');
   const checkoutTotal = document.getElementById('checkout-total-price');
   const customerName = document.getElementById('customer-name');
   const customerAddr = document.getElementById('customer-address');
-
+ 
   if (!checkoutItems || !checkoutTotal) return;
-
+ 
   let total = 0;
   checkoutItems.innerHTML = cart.map(item => {
     total += parseInt(item.price) * (item.quantity || 1);
@@ -516,56 +516,56 @@ function goToCheckout() {
         </div>
       </div>`;
   }).join('');
-
+ 
   checkoutTotal.innerText = total + ' EG';
-
+ 
   if (currentUser) {
     if (customerName) customerName.value = currentUser.name || '';
     if (customerAddr) customerAddr.value = currentUser.address || '';
   }
-
+ 
   closeCart();
   showPage('checkout');
 }
-
+ 
 function goBack() {
   showPage('main');
 }
-
+ 
 async function submitOrder() {
   const nameEl    = document.getElementById('customer-name');
   const phoneEl   = document.getElementById('customer-phone');
   const addressEl = document.getElementById('customer-address');
   const notesEl   = document.getElementById('customer-notes');
-
+ 
   const name    = nameEl ? nameEl.value.trim() : '';
   const phone   = phoneEl ? phoneEl.value.trim() : '';
   const address = addressEl ? addressEl.value.trim() : '';
   const notes   = notesEl ? notesEl.value.trim() : '';
-
+ 
   if (!name || !phone || !address) {
     alert('Please fill all required fields');
     return;
   }
-
+ 
   if (!currentUser) {
     alert('Please login first');
     openAuth();
     return;
   }
-
+ 
   if (cart.length === 0) {
     alert('Your cart is empty');
     return;
   }
-
+ 
   const items = cart.map(item => ({
     name: item.name,
     price: parseInt(item.price),
     quantity: item.quantity || 1,
     image: item.img
   }));
-
+ 
   try {
     const data = await apiRequest('/orders', {
       method: 'POST',
@@ -575,22 +575,22 @@ async function submitOrder() {
         paymentMethod: selectedPayment
       })
     });
-
+ 
     cart = [];
     updateCart();
-
+ 
     const successMsg = document.getElementById('success-message');
     if (successMsg && data.order) {
       successMsg.innerText = 
         `Order #${data.order.orderNumber || 'N/A'} confirmed! We will contact you soon.`;
     }
     showPage('success');
-
+ 
   } catch (e) {
     alert('Failed to place order: ' + (e.message || 'Unknown error'));
   }
 }
-
+ 
 /* ═══════════════════════════════════════════
    Thumbnails
 ═══════════════════════════════════════════ */
@@ -609,7 +609,7 @@ function changeMainImg(productId, thumbEl) {
   }
   thumbEl.classList.add('active');
 }
-
+ 
 /* ═══════════════════════════════════════════
    Visa Format Helpers
 ═══════════════════════════════════════════ */
@@ -618,7 +618,7 @@ function formatCard(input) {
   let v = input.value.replace(/\D/g,'').substring(0,16);
   input.value = v.replace(/(.{4})/g,'$1 ').trim();
 }
-
+ 
 function formatExpiry(input) {
   if (!input) return;
   let v = input.value.replace(/\D/g,'').substring(0,4);

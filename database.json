@@ -1,0 +1,30 @@
+{
+  "users": {
+    "user_1": {
+      "id": "user_1",
+      "name": "halaa",
+      "email": "jg@gmail.com",
+      "password": "$2a$10$RDJy/VCu0u.IzxvRRmHFyOs9QxSq.PRN99DSTIyQZCVU4pioOWoQG",
+      "address": "",
+      "phone": "",
+      "orders": [],
+      "cart": [],
+      "role": "user",
+      "createdAt": "2026-05-03T09:08:08.400Z"
+    },
+    "user_2": {
+      "id": "user_2",
+      "name": "halaa",
+      "email": "jgii@gmail.com",
+      "password": "$2a$10$B2SfmZKCfUXfgsbWt8vfEuuBOcd87GLiFDR5v5Zrx5tl3umQ5s/L2",
+      "address": "",
+      "phone": "",
+      "orders": [],
+      "cart": [],
+      "role": "user",
+      "createdAt": "2026-05-03T09:09:32.919Z"
+    }
+  },
+  "orders": {},
+  "nextId": 3
+}
