@@ -12,24 +12,30 @@ async function apiRequest(endpoint, options = {}) {
     'Content-Type': 'application/json',
     ...options.headers
   };
-  
+
   const token = getToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  
+
   try {
     const res = await fetch(url, {
       ...options,
       headers
     });
-    
+
+    // Handle HTTP errors (401, 404, 500, etc.)
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text.substring(0, 200)}`);
+    }
+
     const contentType = res.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       const text = await res.text();
-      throw new Error(`Server returned non-JSON: ${text.substring(0, 100)}`);
+      throw new Error(`Server returned non-JSON: ${text.substring(0, 200)}`);
     }
-    
+
     const data = await res.json();
     if (!data.success) {
       throw new Error(data.message || 'Request failed');
@@ -188,7 +194,10 @@ function clearSearch() {
 ═══════════════════════════════════════════ */
 function showPage(page) {
   ['main-page','checkout-page','new-collection-page','account-page','success-page']
-    .forEach(id => document.getElementById(id).style.display = 'none');
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
   const map = {
     'main':           'main-page',
     'checkout':       'checkout-page',
@@ -196,7 +205,8 @@ function showPage(page) {
     'account':        'account-page',
     'success':        'success-page'
   };
-  document.getElementById(map[page]).style.display = 'block';
+  const target = document.getElementById(map[page]);
+  if (target) target.style.display = 'block';
   window.scrollTo(0,0);
 }
 
@@ -205,14 +215,25 @@ function showPage(page) {
 ═══════════════════════════════════════════ */
 let currentUser = null;
 
-function openAuth()   { document.getElementById('auth-overlay').style.display = 'flex'; }
-function closeAuth()  { document.getElementById('auth-overlay').style.display = 'none'; }
+function openAuth()   { 
+  const el = document.getElementById('auth-overlay');
+  if (el) el.style.display = 'flex'; 
+}
+function closeAuth()  { 
+  const el = document.getElementById('auth-overlay');
+  if (el) el.style.display = 'none'; 
+}
 
 function switchTab(tab) {
-  document.getElementById('login-form').style.display  = tab === 'login'  ? 'block' : 'none';
-  document.getElementById('signup-form').style.display = tab === 'signup' ? 'block' : 'none';
-  document.getElementById('tab-login').classList.toggle('active',  tab === 'login');
-  document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+  const loginForm = document.getElementById('login-form');
+  const signupForm = document.getElementById('signup-form');
+  const tabLogin = document.getElementById('tab-login');
+  const tabSignup = document.getElementById('tab-signup');
+
+  if (loginForm) loginForm.style.display  = tab === 'login'  ? 'block' : 'none';
+  if (signupForm) signupForm.style.display = tab === 'signup' ? 'block' : 'none';
+  if (tabLogin) tabLogin.classList.toggle('active',  tab === 'login');
+  if (tabSignup) tabSignup.classList.toggle('active', tab === 'signup');
 }
 
 async function signup() {
@@ -220,22 +241,28 @@ async function signup() {
   const email = document.getElementById('signup-email').value.trim();
   const pass  = document.getElementById('signup-pass').value;
   const err   = document.getElementById('signup-error');
-  
-  if (!name || !email || !pass) { err.innerText = 'Please fill all fields.'; return; }
-  if (pass.length < 6) { err.innerText = 'Password must be 6+ characters.'; return; }
-  
+
+  if (!name || !email || !pass) { 
+    if (err) err.innerText = 'Please fill all fields.'; 
+    return; 
+  }
+  if (pass.length < 6) { 
+    if (err) err.innerText = 'Password must be 6+ characters.'; 
+    return; 
+  }
+
   try {
     const data = await apiRequest('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password: pass })
     });
-    
+
     localStorage.setItem('token', data.token);
     loginUser(data.user);
     closeAuth();
-    err.innerText = '';
+    if (err) err.innerText = '';
   } catch (e) {
-    err.innerText = e.message || 'Registration failed';
+    if (err) err.innerText = e.message || 'Registration failed';
   }
 }
 
@@ -243,35 +270,48 @@ async function login() {
   const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-pass').value;
   const err   = document.getElementById('login-error');
-  
-  if (!email || !pass) { err.innerText = 'Please fill all fields.'; return; }
-  
+
+  if (!email || !pass) { 
+    if (err) err.innerText = 'Please fill all fields.'; 
+    return; 
+  }
+
   try {
     const data = await apiRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password: pass })
     });
-    
+
     localStorage.setItem('token', data.token);
     loginUser(data.user);
     closeAuth();
-    err.innerText = '';
+    if (err) err.innerText = '';
   } catch (e) {
-    err.innerText = e.message || 'Wrong email or password.';
+    if (err) err.innerText = e.message || 'Wrong email or password.';
   }
 }
 
 function loginUser(user) {
+  if (!user) {
+    console.error('loginUser called with no user data');
+    return;
+  }
   currentUser = user;
-  document.getElementById('nav-account-label').innerText = user.name.split(' ')[0];
-  if (user.address) document.getElementById('customer-address').value = user.address;
-  if (user.address) document.getElementById('saved-address').value = user.address;
+  const navLabel = document.getElementById('nav-account-label');
+  if (navLabel) navLabel.innerText = user.name ? user.name.split(' ')[0] : 'User';
+
+  const addrField = document.getElementById('customer-address');
+  if (addrField && user.address) addrField.value = user.address;
+
+  const savedAddr = document.getElementById('saved-address');
+  if (savedAddr && user.address) savedAddr.value = user.address;
 }
 
 function logout() {
   currentUser = null;
   localStorage.removeItem('token');
-  document.getElementById('nav-account-label').innerText = 'Login';
+  const navLabel = document.getElementById('nav-account-label');
+  if (navLabel) navLabel.innerText = 'Login';
   showPage('main');
 }
 
@@ -282,25 +322,36 @@ function handleAccountClick() {
 
 async function loadAccountPage() {
   if (!currentUser) return;
-  
+
   try {
     const data = await apiRequest('/auth/me');
     const user = data.user;
+    if (!user) {
+      console.error('No user data returned from /auth/me');
+      return;
+    }
     currentUser = user;
-    
-    document.getElementById('account-name-display').innerText  = '👤 ' + user.name;
-    document.getElementById('account-email-display').innerText = '📧 ' + user.email;
-    document.getElementById('saved-address').value = user.address || '';
-    
+
+    const nameDisplay = document.getElementById('account-name-display');
+    const emailDisplay = document.getElementById('account-email-display');
+    const savedAddr = document.getElementById('saved-address');
+    const ordersList = document.getElementById('orders-list');
+
+    if (nameDisplay) nameDisplay.innerText  = '👤 ' + (user.name || 'Unknown');
+    if (emailDisplay) emailDisplay.innerText = '📧 ' + (user.email || 'No email');
+    if (savedAddr) savedAddr.value = user.address || '';
+
     const orders = user.orders || [];
-    document.getElementById('orders-list').innerHTML = orders.length === 0
-      ? '<p style="color:#9e8e82;font-size:13px;">No orders yet.</p>'
-      : orders.map(o => `
-          <div class="order-item">
-            <p class="order-date">${new Date(o.createdAt).toLocaleDateString()}</p>
-            <p class="order-items-text">${o.items ? o.items.map(i => i.name).join(', ') : ''}</p>
-            <p class="order-total">${o.totalAmount} EG</p>
-          </div>`).join('');
+    if (ordersList) {
+      ordersList.innerHTML = orders.length === 0
+        ? '<p style="color:#9e8e82;font-size:13px;">No orders yet.</p>'
+        : orders.map(o => `
+            <div class="order-item">
+              <p class="order-date">${o.createdAt ? new Date(o.createdAt).toLocaleDateString() : 'N/A'}</p>
+              <p class="order-items-text">${o.items ? o.items.map(i => i.name).join(', ') : ''}</p>
+              <p class="order-total">${o.totalAmount || 0} EG</p>
+            </div>`).join('');
+    }
   } catch (e) {
     console.error('Failed to load account:', e);
   }
@@ -308,15 +359,18 @@ async function loadAccountPage() {
 
 async function saveAddress() {
   if (!currentUser) return;
-  const addr = document.getElementById('saved-address').value.trim();
-  
+  const addrEl = document.getElementById('saved-address');
+  if (!addrEl) return;
+  const addr = addrEl.value.trim();
+
   try {
     await apiRequest('/auth/profile', {
       method: 'PUT',
       body: JSON.stringify({ address: addr })
     });
     currentUser.address = addr;
-    document.getElementById('customer-address').value = addr;
+    const customerAddr = document.getElementById('customer-address');
+    if (customerAddr) customerAddr.value = addr;
     alert('Address saved! ✅');
   } catch (e) {
     alert('Failed to save address');
@@ -326,16 +380,23 @@ async function saveAddress() {
 async function checkAuth() {
   const token = getToken();
   if (!token) return;
-  
+
   try {
     const data = await apiRequest('/auth/me');
-    loginUser(data.user);
+    if (data.user) {
+      loginUser(data.user);
+    }
   } catch (e) {
+    console.log('Auth check failed, clearing token:', e.message);
     localStorage.removeItem('token');
   }
 }
 
-checkAuth();
+// Fix: handle promise rejection on startup
+checkAuth().catch(err => {
+  console.log('Initial auth check failed:', err.message);
+  localStorage.removeItem('token');
+});
 
 /* ═══════════════════════════════════════════
    Cart
@@ -343,15 +404,23 @@ checkAuth();
 let cart = [];
 
 function updateCart() {
-  document.getElementById('cart-count').innerText    = cart.length;
-  document.getElementById('cart-count-nc').innerText = cart.length;
+  const cartCount = document.getElementById('cart-count');
+  const cartCountNc = document.getElementById('cart-count-nc');
+  const cartItems = document.getElementById('cart-items');
+  const cartTotal = document.getElementById('cart-total');
+
+  if (cartCount) cartCount.innerText = cart.length;
+  if (cartCountNc) cartCountNc.innerText = cart.length;
+
+  if (!cartItems || !cartTotal) return;
+
   if (cart.length === 0) {
-    document.getElementById('cart-items').innerHTML = '<p class="cart-empty">Your cart is empty</p>';
-    document.getElementById('cart-total').innerText = '0 EG';
+    cartItems.innerHTML = '<p class="cart-empty">Your cart is empty</p>';
+    cartTotal.innerText = '0 EG';
     return;
   }
   let total = 0;
-  document.getElementById('cart-items').innerHTML = cart.map((item,i) => {
+  cartItems.innerHTML = cart.map((item,i) => {
     total += parseInt(item.price) * (item.quantity || 1);
     return `
       <div class="cart-item">
@@ -363,35 +432,48 @@ function updateCart() {
         <button class="cart-item-remove" onclick="removeFromCart(${i})">✕</button>
       </div>`;
   }).join('');
-  document.getElementById('cart-total').innerText = total + ' EG';
+  cartTotal.innerText = total + ' EG';
 }
 
 function addToCartSimple(name, price, img, e) {
   cart.push({ name, price, img, quantity: 1 });
   updateCart();
-  e.currentTarget.style.opacity = '0.6';
-  setTimeout(() => e.currentTarget.style.opacity = '1', 400);
+  if (e && e.currentTarget) {
+    e.currentTarget.style.opacity = '0.6';
+    setTimeout(() => e.currentTarget.style.opacity = '1', 400);
+  }
 }
 
 function addToCartDirect(imgId, name, price, btn) {
-  const card        = document.getElementById(imgId).closest('.nc-card');
+  const imgEl = document.getElementById(imgId);
+  if (!imgEl) return;
+  const card = imgEl.closest('.nc-card');
+  if (!card) return;
   const activeThumb = card.querySelector('.nc-thumb.active');
-  const img         = activeThumb ? activeThumb.src : document.getElementById(imgId).src;
+  const img = activeThumb ? activeThumb.src : imgEl.src;
   cart.push({ name, price, img, quantity: 1 });
   updateCart();
-  btn.innerText = '✓ Added!';
-  btn.style.background    = '#c9a87c';
-  btn.style.pointerEvents = 'none';
-  setTimeout(() => {
-    btn.innerText           = 'Add to Cart';
-    btn.style.background    = '#3a2e27';
-    btn.style.pointerEvents = 'auto';
-  }, 1200);
+  if (btn) {
+    btn.innerText = '✓ Added!';
+    btn.style.background    = '#c9a87c';
+    btn.style.pointerEvents = 'none';
+    setTimeout(() => {
+      btn.innerText           = 'Add to Cart';
+      btn.style.background    = '#3a2e27';
+      btn.style.pointerEvents = 'auto';
+    }, 1200);
+  }
 }
 
 function removeFromCart(i) { cart.splice(i,1); updateCart(); }
-function openCart()  { document.getElementById('cart').style.display = 'flex'; }
-function closeCart() { document.getElementById('cart').style.display = 'none'; }
+function openCart()  { 
+  const el = document.getElementById('cart');
+  if (el) el.style.display = 'flex'; 
+}
+function closeCart() { 
+  const el = document.getElementById('cart');
+  if (el) el.style.display = 'none'; 
+}
 
 /* ═══════════════════════════════════════════
    Checkout
@@ -400,9 +482,13 @@ let selectedPayment = 'cash';
 
 function selectPayment(method) {
   selectedPayment = method;
-  document.getElementById('opt-whatsapp').classList.toggle('active', method === 'cash');
-  document.getElementById('opt-visa').classList.toggle('active', method === 'visa');
-  document.getElementById('visa-form').style.display = method === 'visa' ? 'block' : 'none';
+  const optWhatsapp = document.getElementById('opt-whatsapp');
+  const optVisa = document.getElementById('opt-visa');
+  const visaForm = document.getElementById('visa-form');
+
+  if (optWhatsapp) optWhatsapp.classList.toggle('active', method === 'cash');
+  if (optVisa) optVisa.classList.toggle('active', method === 'visa');
+  if (visaForm) visaForm.style.display = method === 'visa' ? 'block' : 'none';
 }
 
 function goToCheckout() {
@@ -410,9 +496,16 @@ function goToCheckout() {
     alert('Your cart is empty!');
     return;
   }
-  
+
+  const checkoutItems = document.getElementById('checkout-items');
+  const checkoutTotal = document.getElementById('checkout-total-price');
+  const customerName = document.getElementById('customer-name');
+  const customerAddr = document.getElementById('customer-address');
+
+  if (!checkoutItems || !checkoutTotal) return;
+
   let total = 0;
-  document.getElementById('checkout-items').innerHTML = cart.map(item => {
+  checkoutItems.innerHTML = cart.map(item => {
     total += parseInt(item.price) * (item.quantity || 1);
     return `
       <div class="checkout-item">
@@ -423,14 +516,14 @@ function goToCheckout() {
         </div>
       </div>`;
   }).join('');
-  
-  document.getElementById('checkout-total-price').innerText = total + ' EG';
-  
+
+  checkoutTotal.innerText = total + ' EG';
+
   if (currentUser) {
-    document.getElementById('customer-name').value = currentUser.name || '';
-    document.getElementById('customer-address').value = currentUser.address || '';
+    if (customerName) customerName.value = currentUser.name || '';
+    if (customerAddr) customerAddr.value = currentUser.address || '';
   }
-  
+
   closeCart();
   showPage('checkout');
 }
@@ -440,34 +533,39 @@ function goBack() {
 }
 
 async function submitOrder() {
-  const name    = document.getElementById('customer-name').value.trim();
-  const phone   = document.getElementById('customer-phone').value.trim();
-  const address = document.getElementById('customer-address').value.trim();
-  const notes   = document.getElementById('customer-notes').value.trim();
-  
+  const nameEl    = document.getElementById('customer-name');
+  const phoneEl   = document.getElementById('customer-phone');
+  const addressEl = document.getElementById('customer-address');
+  const notesEl   = document.getElementById('customer-notes');
+
+  const name    = nameEl ? nameEl.value.trim() : '';
+  const phone   = phoneEl ? phoneEl.value.trim() : '';
+  const address = addressEl ? addressEl.value.trim() : '';
+  const notes   = notesEl ? notesEl.value.trim() : '';
+
   if (!name || !phone || !address) {
     alert('Please fill all required fields');
     return;
   }
-  
+
   if (!currentUser) {
     alert('Please login first');
     openAuth();
     return;
   }
-  
+
   if (cart.length === 0) {
     alert('Your cart is empty');
     return;
   }
-  
+
   const items = cart.map(item => ({
     name: item.name,
     price: parseInt(item.price),
     quantity: item.quantity || 1,
     image: item.img
   }));
-  
+
   try {
     const data = await apiRequest('/orders', {
       method: 'POST',
@@ -477,14 +575,17 @@ async function submitOrder() {
         paymentMethod: selectedPayment
       })
     });
-    
+
     cart = [];
     updateCart();
-    
-    document.getElementById('success-message').innerText = 
-      `Order #${data.order.orderNumber} confirmed! We will contact you soon.`;
+
+    const successMsg = document.getElementById('success-message');
+    if (successMsg && data.order) {
+      successMsg.innerText = 
+        `Order #${data.order.orderNumber || 'N/A'} confirmed! We will contact you soon.`;
+    }
     showPage('success');
-    
+
   } catch (e) {
     alert('Failed to place order: ' + (e.message || 'Unknown error'));
   }
@@ -495,10 +596,17 @@ async function submitOrder() {
 ═══════════════════════════════════════════ */
 function changeMainImg(productId, thumbEl) {
   const imgEl = document.getElementById('img-' + productId);
+  if (!imgEl || !thumbEl) return;
   imgEl.classList.add('fade');
-  setTimeout(() => { imgEl.src = thumbEl.src; imgEl.classList.remove('fade'); }, 200);
-  thumbEl.closest('.nc-card').querySelectorAll('.nc-thumb')
-    .forEach(t => t.classList.remove('active'));
+  setTimeout(() => { 
+    imgEl.src = thumbEl.src; 
+    imgEl.classList.remove('fade'); 
+  }, 200);
+  const card = thumbEl.closest('.nc-card');
+  if (card) {
+    card.querySelectorAll('.nc-thumb')
+      .forEach(t => t.classList.remove('active'));
+  }
   thumbEl.classList.add('active');
 }
 
@@ -506,11 +614,13 @@ function changeMainImg(productId, thumbEl) {
    Visa Format Helpers
 ═══════════════════════════════════════════ */
 function formatCard(input) {
+  if (!input) return;
   let v = input.value.replace(/\D/g,'').substring(0,16);
   input.value = v.replace(/(.{4})/g,'$1 ').trim();
 }
 
 function formatExpiry(input) {
+  if (!input) return;
   let v = input.value.replace(/\D/g,'').substring(0,4);
   if (v.length >= 2) v = v.substring(0,2) + ' / ' + v.substring(2);
   input.value = v;
